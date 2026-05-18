@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 import "./env.js" // must be first
+import { randomUUID } from "node:crypto"
+import type { IncomingMessage, ServerResponse } from "node:http"
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js"
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import express from "express"
-import type { IncomingMessage, ServerResponse } from "node:http"
 import type { ZodRawShape } from "zod"
 import { allTools } from "./tools/index.js"
 
@@ -25,16 +27,66 @@ async function startHttp(): Promise<void> {
   const app = express()
   app.use(express.json())
 
-  // Omit sessionIdGenerator entirely for stateless mode (exactOptionalPropertyTypes)
-  const transport = new StreamableHTTPServerTransport()
-  const server = buildServer()
-  // Cast needed: StreamableHTTPServerTransport.onclose getter returns `(() => void) | undefined`
-  // which is incompatible with Transport's `onclose?: () => void` under exactOptionalPropertyTypes
-  await server.connect(transport as never)
+  const sessions = new Map<string, StreamableHTTPServerTransport>()
 
-  app.post("/mcp", (req, res) => { void transport.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse, req.body) })
-  app.get("/mcp", (req, res) => { void transport.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse) })
-  app.delete("/mcp", (req, res) => { void transport.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse) })
+  app.post("/mcp", async (req, res) => {
+    try {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined
+      let transport: StreamableHTTPServerTransport
+
+      if (sessionId !== undefined && sessions.has(sessionId)) {
+        transport = sessions.get(sessionId)!
+      } else if (sessionId === undefined && isInitializeRequest(req.body)) {
+        transport = new StreamableHTTPServerTransport({
+          sessionIdGenerator: () => randomUUID(),
+          onsessioninitialized: (id) => { sessions.set(id, transport) },
+        })
+        transport.onclose = () => {
+          const id = transport.sessionId
+          if (id !== undefined) sessions.delete(id)
+        }
+        const server = buildServer()
+        // Cast: SDK's onclose getter returns `(() => void) | undefined` but Transport expects `?: () => void`
+        // under exactOptionalPropertyTypes — structural mismatch in the SDK declaration, not a logic error
+        await server.connect(transport as never)
+      } else {
+        res.status(400).json({ jsonrpc: "2.0", error: { code: -32000, message: "Bad Request: missing or invalid session" }, id: null })
+        return
+      }
+
+      await transport.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse, req.body)
+    } catch (err) {
+      process.stderr.write(`[kit-mcp] /mcp POST error: ${err instanceof Error ? err.stack : String(err)}\n`)
+      if (!res.headersSent) res.status(500).json({ error: "Internal server error" })
+    }
+  })
+
+  app.get("/mcp", async (req, res) => {
+    try {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined
+      if (sessionId === undefined || !sessions.has(sessionId)) {
+        res.status(400).json({ error: "No active session" })
+        return
+      }
+      await sessions.get(sessionId)!.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse)
+    } catch (err) {
+      process.stderr.write(`[kit-mcp] /mcp GET error: ${err instanceof Error ? err.stack : String(err)}\n`)
+    }
+  })
+
+  app.delete("/mcp", async (req, res) => {
+    try {
+      const sessionId = req.headers["mcp-session-id"] as string | undefined
+      if (sessionId !== undefined && sessions.has(sessionId)) {
+        await sessions.get(sessionId)!.handleRequest(req as unknown as IncomingMessage, res as unknown as ServerResponse)
+      } else {
+        res.status(404).json({ error: "Session not found" })
+      }
+    } catch (err) {
+      process.stderr.write(`[kit-mcp] /mcp DELETE error: ${err instanceof Error ? err.stack : String(err)}\n`)
+    }
+  })
+
   app.get("/health", (_req, res) => { res.json({ status: "ok" }) })
 
   await new Promise<void>((resolve) => { app.listen(port, () => { resolve() }) })
