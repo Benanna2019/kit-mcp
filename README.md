@@ -11,9 +11,9 @@ MCP server for [Kit](https://kit.com) (ConvertKit). Gives any MCP client (Cowork
 3. Copy your Railway deployment URL (e.g. `https://kit-mcp-production.up.railway.app`)
 4. Add it to your MCP client config (see below)
 
-## Connect to Cowork / Claude Desktop
+## Connect to your MCP client
 
-In your `claude_desktop_config.json` (or Cowork MCP settings):
+**Cowork / Claude Code** — supports remote URLs natively:
 
 ```json
 {
@@ -25,7 +25,20 @@ In your `claude_desktop_config.json` (or Cowork MCP settings):
 }
 ```
 
-Restart Cowork. The Kit tools will appear.
+**Claude Desktop** — requires the `mcp-remote` bridge:
+
+```json
+{
+  "mcpServers": {
+    "kit": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://your-kit-mcp.up.railway.app/mcp"]
+    }
+  }
+}
+```
+
+Restart the app. The Kit tools will appear.
 
 ## Run locally (stdio)
 
