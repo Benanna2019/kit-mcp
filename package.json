@@ -2,7 +2,7 @@
   "name": "kit-mcp",
   "version": "0.0.1",
   "description": "MCP server exposing Kit (ConvertKit) as tools for Cowork and other Claude clients. Built with Effect.",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
