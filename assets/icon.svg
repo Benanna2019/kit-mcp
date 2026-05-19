@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>Kit MCP — app icon (dark squircle)</title>
+  <rect x="8" y="8" width="184" height="184" rx="42" fill="#18150f"></rect>
+  <path d="M52 56 V144" stroke="#f5f1e8" stroke-width="20" stroke-linecap="round"></path>
+  <path d="M52 100 L96 58" stroke="#f5f1e8" stroke-width="20" stroke-linecap="round"></path>
+  <path d="M52 100 L96 142" stroke="#f5f1e8" stroke-width="20" stroke-linecap="round"></path>
+  <path d="M96 100 H122" stroke="#f5f1e8" stroke-width="13" stroke-linecap="round"></path>
+  <rect x="122" y="80" width="34" height="40" rx="7" fill="#ff7a2f"></rect>
+  <rect x="128" y="80" width="3" height="40" fill="#b94e16" opacity="0.5"></rect>
+  <rect x="142" y="80" width="3" height="40" fill="#b94e16" opacity="0.5"></rect>
+  <rect x="156" y="87" width="14" height="9" rx="2" fill="#f5f1e8"></rect>
+  <rect x="156" y="104" width="14" height="9" rx="2" fill="#f5f1e8"></rect>
+</svg>
