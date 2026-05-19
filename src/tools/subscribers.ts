@@ -138,9 +138,67 @@ const updateSubscriber = erase({
     ),
 })
 
+const unsubscribeSubscriber = erase({
+  name: "unsubscribe_subscriber",
+  description: "Unsubscribe a subscriber by id. Their state will change to cancelled.",
+  inputSchema: z.object({
+    subscriber_id: z.number().int().describe("Subscriber id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.unsubscribeSubscriber(args.subscriber_id)
+      }),
+      (s) => `Subscriber #${s.id} (${s.email_address}) unsubscribed. State: ${s.state}`,
+    ),
+})
+
+const getSubscriberStats = erase({
+  name: "get_subscriber_stats",
+  description: "Get open and click stats for a subscriber.",
+  inputSchema: z.object({
+    subscriber_id: z.number().int().describe("Subscriber id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.getSubscriberStats(args.subscriber_id)
+      }),
+      (result) => {
+        const s = result.subscriber
+        const lines = Object.entries(result.stats).map(([k, v]) => `  ${k}: ${v}`)
+        return [`Stats for ${s.email_address} (#${s.id})`, ...lines].join("\n")
+      },
+    ),
+})
+
+const listSubscriberTags = erase({
+  name: "list_subscriber_tags",
+  description: "List all tags applied to a subscriber.",
+  inputSchema: z.object({
+    subscriber_id: z.number().int().describe("Subscriber id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.listSubscriberTags(args.subscriber_id)
+      }),
+      (result) =>
+        result.tags.length
+          ? result.tags.map((t) => `#${t.id}  ${t.name}`).join("\n")
+          : "No tags on this subscriber.",
+    ),
+})
+
 export const subscriberTools: ReadonlyArray<ToolEntry> = [
   listSubscribers,
   getSubscriber,
   createSubscriber,
   updateSubscriber,
+  unsubscribeSubscriber,
+  getSubscriberStats,
+  listSubscriberTags,
 ]

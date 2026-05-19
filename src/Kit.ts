@@ -93,6 +93,69 @@ export class SequenceEmail extends Schema.Class<SequenceEmail>("SequenceEmail")(
   created_at: Schema.String,
 }) {}
 
+export class Form extends Schema.Class<Form>("Form")({
+  id: Schema.Number,
+  name: Schema.String,
+  created_at: Schema.String,
+  type: Schema.optional(Schema.String),
+  format: Schema.optional(Schema.NullOr(Schema.String)),
+  embed_js: Schema.optional(Schema.NullOr(Schema.String)),
+  embed_url: Schema.optional(Schema.NullOr(Schema.String)),
+}) {}
+
+export class CustomField extends Schema.Class<CustomField>("CustomField")({
+  id: Schema.Number,
+  name: Schema.String,
+  key: Schema.String,
+  label: Schema.String,
+}) {}
+
+export class Webhook extends Schema.Class<Webhook>("Webhook")({
+  id: Schema.Number,
+  account_id: Schema.Number,
+  event: Schema.Unknown,
+  target_url: Schema.String,
+}) {}
+
+export class Account extends Schema.Class<Account>("Account")({
+  name: Schema.String,
+  primary_email_address: Schema.String,
+  plan_type: Schema.optional(Schema.String),
+}) {}
+
+export class EmailStats extends Schema.Class<EmailStats>("EmailStats")({
+  sent: Schema.Number,
+  clicked: Schema.Number,
+  opened: Schema.Number,
+  unsubscribed: Schema.Number,
+}) {}
+
+export class GrowthStats extends Schema.Class<GrowthStats>("GrowthStats")({
+  cancellations: Schema.Number,
+  net_new_subscribers: Schema.Number,
+  new_subscribers: Schema.Number,
+  subscribers: Schema.Number,
+  churn: Schema.Number,
+}) {}
+
+export class Segment extends Schema.Class<Segment>("Segment")({
+  id: Schema.Number,
+  name: Schema.String,
+  created_at: Schema.String,
+}) {}
+
+export class Purchase extends Schema.Class<Purchase>("Purchase")({
+  id: Schema.Number,
+  subscriber_id: Schema.NullOr(Schema.Number),
+  status: Schema.String,
+  currency: Schema.String,
+  subtotal: Schema.Number,
+  total: Schema.Number,
+  transaction_id: Schema.String,
+  transaction_time: Schema.String,
+  products: Schema.optional(Schema.Unknown),
+}) {}
+
 const Pagination = Schema.Struct({
   has_previous_page: Schema.Boolean,
   has_next_page: Schema.Boolean,
@@ -120,6 +183,62 @@ const SequenceResponse = Schema.Struct({ sequence: Sequence })
 const SequenceEmailResponse = Schema.Struct({ sequence_email: SequenceEmail })
 const SubscriberResponse = Schema.Struct({ subscriber: Subscriber })
 const TagResponse = Schema.Struct({ tag: Tag })
+
+const SubscriberStatsResponse = Schema.Struct({
+  subscriber: Subscriber,
+  stats: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+})
+
+const FormsResponse = Schema.Struct({
+  forms: Schema.Array(Form),
+})
+
+const CustomFieldsResponse = Schema.Struct({
+  custom_fields: Schema.Array(CustomField),
+})
+
+const CustomFieldResponse = Schema.Struct({ custom_field: CustomField })
+
+const WebhooksResponse = Schema.Struct({
+  webhooks: Schema.Array(Webhook),
+})
+
+const WebhookResponse = Schema.Struct({ webhook: Webhook })
+
+const AccountResponse = Schema.Struct({ account: Account })
+
+const EmailStatsResponse = Schema.Struct({
+  stats: EmailStats,
+})
+
+const GrowthStatsResponse = Schema.Struct({
+  stats: GrowthStats,
+})
+
+const SegmentsResponse = Schema.Struct({
+  segments: Schema.Array(Segment),
+})
+
+const PurchasesResponse = Schema.Struct({
+  purchases: Schema.Array(Purchase),
+  pagination: Pagination,
+})
+
+const PurchaseResponse = Schema.Struct({ purchase: Purchase })
+
+const SequencesResponse = Schema.Struct({
+  sequences: Schema.Array(Sequence),
+  pagination: Pagination,
+})
+
+const SequenceEmailsResponse = Schema.Struct({
+  sequence_emails: Schema.Array(SequenceEmail),
+})
+
+const BroadcastStatsResponse = Schema.Struct({
+  broadcast: Broadcast,
+  stats: Schema.Record({ key: Schema.String, value: Schema.Unknown }),
+})
 
 // ────────────────────── Service ──────────────────────
 
@@ -200,6 +319,48 @@ export class Kit extends Context.Tag("@kit-mcp/Kit")<
       tagId: number,
       subscriberId: number,
     ) => Effect.Effect<void, KitError>
+    // Subscriber extensions
+    readonly unsubscribeSubscriber: (id: number) => Effect.Effect<Subscriber, KitError>
+    readonly getSubscriberStats: (subscriberId: number) => Effect.Effect<typeof SubscriberStatsResponse.Type, KitError>
+    readonly listSubscriberTags: (subscriberId: number) => Effect.Effect<typeof TagsResponse.Type, KitError>
+    // Broadcast extensions
+    readonly getBroadcast: (id: number) => Effect.Effect<Broadcast, KitError>
+    readonly deleteBroadcast: (id: number) => Effect.Effect<void, KitError>
+    readonly getBroadcastStats: (id: number) => Effect.Effect<typeof BroadcastStatsResponse.Type, KitError>
+    // Sequence extensions
+    readonly listSequences: (params?: { per_page?: number; after?: string }) => Effect.Effect<typeof SequencesResponse.Type, KitError>
+    readonly getSequence: (id: number) => Effect.Effect<Sequence, KitError>
+    readonly updateSequence: (id: number, name: string) => Effect.Effect<Sequence, KitError>
+    readonly deleteSequence: (id: number) => Effect.Effect<void, KitError>
+    readonly listSequenceEmails: (sequenceId: number) => Effect.Effect<typeof SequenceEmailsResponse.Type, KitError>
+    readonly listSequenceSubscribers: (sequenceId: number, params?: { per_page?: number; after?: string }) => Effect.Effect<typeof SubscribersResponse.Type, KitError>
+    // Tag extensions
+    readonly updateTag: (id: number, name: string) => Effect.Effect<Tag, KitError>
+    readonly listSubscribersForTag: (tagId: number, params?: { per_page?: number; after?: string }) => Effect.Effect<typeof SubscribersResponse.Type, KitError>
+    // Forms
+    readonly listForms: () => Effect.Effect<typeof FormsResponse.Type, KitError>
+    readonly listFormSubscribers: (formId: number, params?: { per_page?: number; after?: string }) => Effect.Effect<typeof SubscribersResponse.Type, KitError>
+    readonly addSubscriberToForm: (formId: number, subscriberId: number) => Effect.Effect<void, KitError>
+    readonly addSubscriberToFormByEmail: (formId: number, email: string) => Effect.Effect<void, KitError>
+    // Custom fields
+    readonly listCustomFields: () => Effect.Effect<typeof CustomFieldsResponse.Type, KitError>
+    readonly createCustomField: (label: string) => Effect.Effect<CustomField, KitError>
+    readonly updateCustomField: (id: number, label: string) => Effect.Effect<CustomField, KitError>
+    readonly deleteCustomField: (id: number) => Effect.Effect<void, KitError>
+    // Webhooks
+    readonly listWebhooks: () => Effect.Effect<typeof WebhooksResponse.Type, KitError>
+    readonly createWebhook: (params: { event: { name: string; subscriber_filter?: string }; target_url: string }) => Effect.Effect<Webhook, KitError>
+    readonly deleteWebhook: (id: number) => Effect.Effect<void, KitError>
+    // Account
+    readonly getAccount: () => Effect.Effect<Account, KitError>
+    readonly getEmailStats: () => Effect.Effect<typeof EmailStatsResponse.Type, KitError>
+    readonly getGrowthStats: () => Effect.Effect<typeof GrowthStatsResponse.Type, KitError>
+    // Segments
+    readonly listSegments: () => Effect.Effect<typeof SegmentsResponse.Type, KitError>
+    // Purchases
+    readonly listPurchases: (params?: { per_page?: number; after?: string }) => Effect.Effect<typeof PurchasesResponse.Type, KitError>
+    readonly getPurchase: (id: number) => Effect.Effect<Purchase, KitError>
+    readonly createPurchase: (params: Record<string, unknown>) => Effect.Effect<Purchase, KitError>
   }
 >() {
   static readonly layer: Layer.Layer<Kit, KitConfigError> = Layer.effect(
@@ -446,6 +607,270 @@ export class Kit extends Context.Tag("@kit-mcp/Kit")<
         yield* request("DELETE", path)
       })
 
+      // ── Subscriber extensions ──
+
+      const unsubscribeSubscriber = Effect.fn("Kit.unsubscribeSubscriber")(function* (
+        id: number,
+      ) {
+        const path = `/subscribers/${id}/unsubscribe`
+        const raw = yield* request("POST", path)
+        const result = yield* decode(SubscriberResponse, raw, path)
+        return result.subscriber
+      })
+
+      const getSubscriberStats = Effect.fn("Kit.getSubscriberStats")(function* (
+        subscriberId: number,
+      ) {
+        const path = `/subscribers/${subscriberId}/stats`
+        const raw = yield* request("GET", path)
+        return yield* decode(SubscriberStatsResponse, raw, path)
+      })
+
+      const listSubscriberTags = Effect.fn("Kit.listSubscriberTags")(function* (
+        subscriberId: number,
+      ) {
+        const path = `/subscribers/${subscriberId}/tags`
+        const raw = yield* request("GET", path)
+        return yield* decode(TagsResponse, raw, path)
+      })
+
+      // ── Broadcast extensions ──
+
+      const getBroadcast = Effect.fn("Kit.getBroadcast")(function* (id: number) {
+        const path = `/broadcasts/${id}`
+        const raw = yield* request("GET", path)
+        const result = yield* decode(BroadcastResponse, raw, path)
+        return result.broadcast
+      })
+
+      const deleteBroadcast = Effect.fn("Kit.deleteBroadcast")(function* (id: number) {
+        const path = `/broadcasts/${id}`
+        yield* request("DELETE", path)
+      })
+
+      const getBroadcastStats = Effect.fn("Kit.getBroadcastStats")(function* (id: number) {
+        const path = `/broadcasts/${id}/stats`
+        const raw = yield* request("GET", path)
+        return yield* decode(BroadcastStatsResponse, raw, path)
+      })
+
+      // ── Sequence extensions ──
+
+      const listSequences = Effect.fn("Kit.listSequences")(function* (
+        params?: { per_page?: number; after?: string },
+      ) {
+        const qs = new URLSearchParams()
+        if (params?.per_page) qs.set("per_page", String(params.per_page))
+        if (params?.after) qs.set("after", params.after)
+        const path = `/sequences${qs.toString() ? `?${qs}` : ""}`
+        const raw = yield* request("GET", path)
+        return yield* decode(SequencesResponse, raw, path)
+      })
+
+      const getSequence = Effect.fn("Kit.getSequence")(function* (id: number) {
+        const path = `/sequences/${id}`
+        const raw = yield* request("GET", path)
+        const result = yield* decode(SequenceResponse, raw, path)
+        return result.sequence
+      })
+
+      const updateSequence = Effect.fn("Kit.updateSequence")(function* (
+        id: number,
+        name: string,
+      ) {
+        const path = `/sequences/${id}`
+        const raw = yield* request("PUT", path, { name })
+        const result = yield* decode(SequenceResponse, raw, path)
+        return result.sequence
+      })
+
+      const deleteSequence = Effect.fn("Kit.deleteSequence")(function* (id: number) {
+        const path = `/sequences/${id}`
+        yield* request("DELETE", path)
+      })
+
+      const listSequenceEmails = Effect.fn("Kit.listSequenceEmails")(function* (
+        sequenceId: number,
+      ) {
+        const path = `/sequences/${sequenceId}/emails`
+        const raw = yield* request("GET", path)
+        return yield* decode(SequenceEmailsResponse, raw, path)
+      })
+
+      const listSequenceSubscribers = Effect.fn("Kit.listSequenceSubscribers")(function* (
+        sequenceId: number,
+        params?: { per_page?: number; after?: string },
+      ) {
+        const qs = new URLSearchParams()
+        if (params?.per_page) qs.set("per_page", String(params.per_page))
+        if (params?.after) qs.set("after", params.after)
+        const path = `/sequences/${sequenceId}/subscribers${qs.toString() ? `?${qs}` : ""}`
+        const raw = yield* request("GET", path)
+        return yield* decode(SubscribersResponse, raw, path)
+      })
+
+      // ── Tag extensions ──
+
+      const updateTag = Effect.fn("Kit.updateTag")(function* (id: number, name: string) {
+        const path = `/tags/${id}`
+        const raw = yield* request("PUT", path, { name })
+        const result = yield* decode(TagResponse, raw, path)
+        return result.tag
+      })
+
+      const listSubscribersForTag = Effect.fn("Kit.listSubscribersForTag")(function* (
+        tagId: number,
+        params?: { per_page?: number; after?: string },
+      ) {
+        const qs = new URLSearchParams()
+        if (params?.per_page) qs.set("per_page", String(params.per_page))
+        if (params?.after) qs.set("after", params.after)
+        const path = `/tags/${tagId}/subscribers${qs.toString() ? `?${qs}` : ""}`
+        const raw = yield* request("GET", path)
+        return yield* decode(SubscribersResponse, raw, path)
+      })
+
+      // ── Forms ──
+
+      const listForms = Effect.fn("Kit.listForms")(function* () {
+        const raw = yield* request("GET", "/forms")
+        return yield* decode(FormsResponse, raw, "/forms")
+      })
+
+      const listFormSubscribers = Effect.fn("Kit.listFormSubscribers")(function* (
+        formId: number,
+        params?: { per_page?: number; after?: string },
+      ) {
+        const qs = new URLSearchParams()
+        if (params?.per_page) qs.set("per_page", String(params.per_page))
+        if (params?.after) qs.set("after", params.after)
+        const path = `/forms/${formId}/subscribers${qs.toString() ? `?${qs}` : ""}`
+        const raw = yield* request("GET", path)
+        return yield* decode(SubscribersResponse, raw, path)
+      })
+
+      const addSubscriberToForm = Effect.fn("Kit.addSubscriberToForm")(function* (
+        formId: number,
+        subscriberId: number,
+      ) {
+        const path = `/forms/${formId}/subscribers/${subscriberId}`
+        yield* request("POST", path)
+      })
+
+      const addSubscriberToFormByEmail = Effect.fn("Kit.addSubscriberToFormByEmail")(function* (
+        formId: number,
+        email: string,
+      ) {
+        const path = `/forms/${formId}/subscribers`
+        yield* request("POST", path, { email_address: email })
+      })
+
+      // ── Custom fields ──
+
+      const listCustomFields = Effect.fn("Kit.listCustomFields")(function* () {
+        const raw = yield* request("GET", "/custom_fields")
+        return yield* decode(CustomFieldsResponse, raw, "/custom_fields")
+      })
+
+      const createCustomField = Effect.fn("Kit.createCustomField")(function* (label: string) {
+        const raw = yield* request("POST", "/custom_fields", { label })
+        const result = yield* decode(CustomFieldResponse, raw, "/custom_fields")
+        return result.custom_field
+      })
+
+      const updateCustomField = Effect.fn("Kit.updateCustomField")(function* (
+        id: number,
+        label: string,
+      ) {
+        const path = `/custom_fields/${id}`
+        const raw = yield* request("PUT", path, { label })
+        const result = yield* decode(CustomFieldResponse, raw, path)
+        return result.custom_field
+      })
+
+      const deleteCustomField = Effect.fn("Kit.deleteCustomField")(function* (id: number) {
+        const path = `/custom_fields/${id}`
+        yield* request("DELETE", path)
+      })
+
+      // ── Webhooks ──
+
+      const listWebhooks = Effect.fn("Kit.listWebhooks")(function* () {
+        const raw = yield* request("GET", "/webhooks")
+        return yield* decode(WebhooksResponse, raw, "/webhooks")
+      })
+
+      const createWebhook = Effect.fn("Kit.createWebhook")(function* (params: {
+        event: { name: string; subscriber_filter?: string }
+        target_url: string
+      }) {
+        const body: Record<string, unknown> = {
+          event: params.event,
+          target_url: params.target_url,
+        }
+        const raw = yield* request("POST", "/webhooks", body)
+        const result = yield* decode(WebhookResponse, raw, "/webhooks")
+        return result.webhook
+      })
+
+      const deleteWebhook = Effect.fn("Kit.deleteWebhook")(function* (id: number) {
+        const path = `/webhooks/${id}`
+        yield* request("DELETE", path)
+      })
+
+      // ── Account ──
+
+      const getAccount = Effect.fn("Kit.getAccount")(function* () {
+        const raw = yield* request("GET", "/account")
+        const result = yield* decode(AccountResponse, raw, "/account")
+        return result.account
+      })
+
+      const getEmailStats = Effect.fn("Kit.getEmailStats")(function* () {
+        const raw = yield* request("GET", "/account/email_stats")
+        return yield* decode(EmailStatsResponse, raw, "/account/email_stats")
+      })
+
+      const getGrowthStats = Effect.fn("Kit.getGrowthStats")(function* () {
+        const raw = yield* request("GET", "/account/growth_stats")
+        return yield* decode(GrowthStatsResponse, raw, "/account/growth_stats")
+      })
+
+      // ── Segments ──
+
+      const listSegments = Effect.fn("Kit.listSegments")(function* () {
+        const raw = yield* request("GET", "/segments")
+        return yield* decode(SegmentsResponse, raw, "/segments")
+      })
+
+      // ── Purchases ──
+
+      const listPurchases = Effect.fn("Kit.listPurchases")(function* (
+        params?: { per_page?: number; after?: string },
+      ) {
+        const qs = new URLSearchParams()
+        if (params?.per_page) qs.set("per_page", String(params.per_page))
+        if (params?.after) qs.set("after", params.after)
+        const path = `/purchases${qs.toString() ? `?${qs}` : ""}`
+        const raw = yield* request("GET", path)
+        return yield* decode(PurchasesResponse, raw, path)
+      })
+
+      const getPurchase = Effect.fn("Kit.getPurchase")(function* (id: number) {
+        const path = `/purchases/${id}`
+        const raw = yield* request("GET", path)
+        const result = yield* decode(PurchaseResponse, raw, path)
+        return result.purchase
+      })
+
+      const createPurchase = Effect.fn("Kit.createPurchase")(function* (
+        params: Record<string, unknown>,
+      ) {
+        const raw = yield* request("POST", "/purchases", params)
+        const result = yield* decode(PurchaseResponse, raw, "/purchases")
+        return result.purchase
+      })
+
       return Kit.of({
         listSubscribers,
         getSubscriberByEmail,
@@ -462,6 +887,38 @@ export class Kit extends Context.Tag("@kit-mcp/Kit")<
         updateSubscriber,
         createTag,
         removeTagFromSubscriber,
+        unsubscribeSubscriber,
+        getSubscriberStats,
+        listSubscriberTags,
+        getBroadcast,
+        deleteBroadcast,
+        getBroadcastStats,
+        listSequences,
+        getSequence,
+        updateSequence,
+        deleteSequence,
+        listSequenceEmails,
+        listSequenceSubscribers,
+        updateTag,
+        listSubscribersForTag,
+        listForms,
+        listFormSubscribers,
+        addSubscriberToForm,
+        addSubscriberToFormByEmail,
+        listCustomFields,
+        createCustomField,
+        updateCustomField,
+        deleteCustomField,
+        listWebhooks,
+        createWebhook,
+        deleteWebhook,
+        getAccount,
+        getEmailStats,
+        getGrowthStats,
+        listSegments,
+        listPurchases,
+        getPurchase,
+        createPurchase,
       })
     }),
   )

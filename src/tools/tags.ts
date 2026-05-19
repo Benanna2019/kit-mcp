@@ -76,9 +76,55 @@ const removeTagFromSubscriber = erase({
     ),
 })
 
+const updateTag = erase({
+  name: "update_tag",
+  description: "Rename a tag.",
+  inputSchema: z.object({
+    tag_id: z.number().int().describe("Tag id."),
+    name: z.string().describe("New name for the tag."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.updateTag(args.tag_id, args.name)
+      }),
+      (tag) => `Tag #${tag.id} renamed to "${tag.name}".`,
+    ),
+})
+
+const listSubscribersForTag = erase({
+  name: "list_subscribers_for_tag",
+  description: "List subscribers with a given tag. Paginated.",
+  inputSchema: z.object({
+    tag_id: z.number().int().describe("Tag id."),
+    per_page: z.number().int().min(1).max(500).optional().describe("Results per page. Default 50."),
+    after: z.string().optional().describe("Pagination cursor from a previous response."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.listSubscribersForTag(args.tag_id, {
+          ...(args.per_page !== undefined ? { per_page: args.per_page } : {}),
+          ...(args.after !== undefined ? { after: args.after } : {}),
+        })
+      }),
+      (result) => {
+        const lines = result.subscribers.map(
+          (s) => `${s.email_address}  ·  ${s.first_name ?? "(none)"}  ·  ${s.state}`,
+        )
+        const pageInfo = `${result.subscribers.length} subscribers, has_next=${result.pagination.has_next_page}`
+        return [pageInfo, ...lines].join("\n")
+      },
+    ),
+})
+
 export const tagTools: ReadonlyArray<ToolEntry> = [
   listTags,
   createTag,
   tagSubscriber,
   removeTagFromSubscriber,
+  updateTag,
+  listSubscribersForTag,
 ]

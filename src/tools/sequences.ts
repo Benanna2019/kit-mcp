@@ -120,9 +120,141 @@ const addSubscriberToSequence = erase({
     ),
 })
 
+const listSequences = erase({
+  name: "list_sequences",
+  description: "List all sequences in the Kit account. Paginated.",
+  inputSchema: z.object({
+    per_page: z.number().int().min(1).max(500).optional().describe("Results per page. Default 50."),
+    after: z.string().optional().describe("Pagination cursor from a previous response."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.listSequences({
+          ...(args.per_page !== undefined ? { per_page: args.per_page } : {}),
+          ...(args.after !== undefined ? { after: args.after } : {}),
+        })
+      }),
+      (result) => {
+        if (result.sequences.length === 0) return "No sequences yet."
+        const lines = result.sequences.map((s) => `#${s.id}  ${s.name}  (created ${s.created_at.slice(0, 10)})`)
+        const pageInfo = `has_next=${result.pagination.has_next_page}, end_cursor=${result.pagination.end_cursor ?? "(none)"}`
+        return [...lines, "", pageInfo].join("\n")
+      },
+    ),
+})
+
+const getSequence = erase({
+  name: "get_sequence",
+  description: "Fetch a single sequence by id.",
+  inputSchema: z.object({
+    sequence_id: z.number().int().describe("Sequence id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.getSequence(args.sequence_id)
+      }),
+      (seq) => `Sequence #${seq.id}  ·  "${seq.name}"  ·  created ${seq.created_at.slice(0, 10)}`,
+    ),
+})
+
+const updateSequence = erase({
+  name: "update_sequence",
+  description: "Rename a sequence.",
+  inputSchema: z.object({
+    sequence_id: z.number().int().describe("Sequence id."),
+    name: z.string().describe("New name for the sequence."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.updateSequence(args.sequence_id, args.name)
+      }),
+      (seq) => `Sequence #${seq.id} renamed to "${seq.name}".`,
+    ),
+})
+
+const deleteSequence = erase({
+  name: "delete_sequence",
+  description: "Delete a sequence by id. This is permanent.",
+  inputSchema: z.object({
+    sequence_id: z.number().int().describe("Sequence id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        yield* kit.deleteSequence(args.sequence_id)
+        return null
+      }),
+      () => `Sequence #${args.sequence_id} deleted.`,
+    ),
+})
+
+const listSequenceEmails = erase({
+  name: "list_sequence_emails",
+  description: "List all emails in a sequence.",
+  inputSchema: z.object({
+    sequence_id: z.number().int().describe("Sequence id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.listSequenceEmails(args.sequence_id)
+      }),
+      (result) => {
+        if (result.sequence_emails.length === 0) return "No emails in this sequence."
+        return result.sequence_emails
+          .map(
+            (e) =>
+              `#${e.id}  pos ${e.position}  delay ${e.delay_in_days}d  ·  ${e.subject ?? "(no subject)"}`,
+          )
+          .join("\n")
+      },
+    ),
+})
+
+const listSequenceSubscribers = erase({
+  name: "list_sequence_subscribers",
+  description: "List subscribers enrolled in a sequence. Paginated.",
+  inputSchema: z.object({
+    sequence_id: z.number().int().describe("Sequence id."),
+    per_page: z.number().int().min(1).max(500).optional().describe("Results per page. Default 50."),
+    after: z.string().optional().describe("Pagination cursor from a previous response."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.listSequenceSubscribers(args.sequence_id, {
+          ...(args.per_page !== undefined ? { per_page: args.per_page } : {}),
+          ...(args.after !== undefined ? { after: args.after } : {}),
+        })
+      }),
+      (result) => {
+        const lines = result.subscribers.map(
+          (s) => `${s.email_address}  ·  ${s.first_name ?? "(none)"}  ·  ${s.state}`,
+        )
+        const pageInfo = `${result.subscribers.length} subscribers, has_next=${result.pagination.has_next_page}`
+        return [pageInfo, ...lines].join("\n")
+      },
+    ),
+})
+
 export const sequenceTools: ReadonlyArray<ToolEntry> = [
   createSequence,
   createSequenceEmail,
   updateSequenceEmail,
   addSubscriberToSequence,
+  listSequences,
+  getSequence,
+  updateSequence,
+  deleteSequence,
+  listSequenceEmails,
+  listSequenceSubscribers,
 ]

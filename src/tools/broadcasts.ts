@@ -111,8 +111,75 @@ const updateBroadcast = erase({
     ),
 })
 
+const getBroadcast = erase({
+  name: "get_broadcast",
+  description: "Fetch a single broadcast by id.",
+  inputSchema: z.object({
+    broadcast_id: z.number().int().describe("Broadcast id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.getBroadcast(args.broadcast_id)
+      }),
+      (b) => {
+        const sent = b.published_at ?? b.send_at ?? "(draft)"
+        return [
+          `Broadcast #${b.id}`,
+          `  subject: ${b.subject ?? "(none)"}`,
+          `  send_at: ${sent}`,
+          `  preview: ${b.preview_text ?? "(none)"}`,
+        ].join("\n")
+      },
+    ),
+})
+
+const deleteBroadcast = erase({
+  name: "delete_broadcast",
+  description: "Delete a broadcast by id. This is permanent.",
+  inputSchema: z.object({
+    broadcast_id: z.number().int().describe("Broadcast id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        yield* kit.deleteBroadcast(args.broadcast_id)
+        return null
+      }),
+      () => `Broadcast #${args.broadcast_id} deleted.`,
+    ),
+})
+
+const getBroadcastStats = erase({
+  name: "get_broadcast_stats",
+  description: "Get send, open, and click stats for a broadcast.",
+  inputSchema: z.object({
+    broadcast_id: z.number().int().describe("Broadcast id."),
+  }),
+  run: (args) =>
+    runTool(
+      Effect.gen(function* () {
+        const kit = yield* Kit
+        return yield* kit.getBroadcastStats(args.broadcast_id)
+      }),
+      (result) => {
+        const b = result.broadcast
+        const lines = Object.entries(result.stats).map(([k, v]) => `  ${k}: ${v}`)
+        return [
+          `Stats for broadcast #${b.id} "${b.subject ?? "(no subject)"}"`,
+          ...lines,
+        ].join("\n")
+      },
+    ),
+})
+
 export const broadcastTools: ReadonlyArray<ToolEntry> = [
   listBroadcasts,
   createBroadcast,
   updateBroadcast,
+  getBroadcast,
+  deleteBroadcast,
+  getBroadcastStats,
 ]
